@@ -418,7 +418,7 @@ def test_cache_invalidation(rotkehlchen_api_server: APIServer) -> None:
 
     tx_hash = make_evm_tx_hash()
     return_wrapped = EvmEvent(
-        tx_hash=tx_hash,
+        tx_ref=tx_hash,
         sequence_index=0,
         timestamp=TimestampMS(16433333000),
         location=Location.ETHEREUM,
@@ -430,7 +430,7 @@ def test_cache_invalidation(rotkehlchen_api_server: APIServer) -> None:
         notes='my notes',
     )
     remove_asset = EvmEvent(
-        tx_hash=tx_hash,
+        tx_ref=tx_hash,
         sequence_index=1,
         timestamp=TimestampMS(16433333000),
         location=Location.ETHEREUM,
@@ -741,8 +741,8 @@ def test_import_export_accounting_rules(rotkehlchen_api_server: 'APIServer') -> 
         assert cursor.execute(
             'SELECT * FROM accounting_rules WHERE identifier IN (1, 82);',
         ).fetchall() == [
-            (1, 'deposit', 'deposit asset', 'aave-v1', 0, 0, 1, 'A'),
-            (82, 'deposit', 'fee', NO_ACCOUNTING_COUNTERPARTY, 1, 0, 1, None),
+            (1, 'deposit', 'deposit asset', 'aave-v1', 0, 0, 1, 'A', 0),
+            (82, 'deposit', 'fee', NO_ACCOUNTING_COUNTERPARTY, 1, 0, 1, None, 0),
         ] == initial_rules
 
         assert cursor.execute('SELECT * FROM linked_rules_properties').fetchall() == [

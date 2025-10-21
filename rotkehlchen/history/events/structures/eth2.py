@@ -31,7 +31,8 @@ from rotkehlchen.types import (
 )
 
 from .base import HISTORY_EVENT_DB_TUPLE_WRITE, HistoryBaseEntry, HistoryBaseEntryType
-from .evm_event import CHAIN_EVENT_FIELDS_TYPE, EvmEvent
+from .evm_event import EvmEvent
+from .onchain_event import CHAIN_EVENT_FIELDS_TYPE
 
 if TYPE_CHECKING:
     from rotkehlchen.accounting.pot import AccountingPot
@@ -458,7 +459,7 @@ class EthDepositEvent(EvmEvent, EthStakingEvent):  # noqa: PLW1641  # hash in su
 
     def __init__(
             self,
-            tx_hash: EVMTxHash,
+            tx_ref: EVMTxHash,
             validator_index: int,
             sequence_index: int,
             timestamp: TimestampMS,
@@ -470,7 +471,7 @@ class EthDepositEvent(EvmEvent, EthStakingEvent):  # noqa: PLW1641  # hash in su
     ) -> None:
         suffix = f'{validator_index}' if validator_index != UNKNOWN_VALIDATOR_INDEX else 'with a not yet known validator index'  # noqa: E501
         super().__init__(  # super should call evm event
-            tx_hash=tx_hash,
+            tx_ref=tx_ref,
             sequence_index=sequence_index,
             timestamp=timestamp,
             location=Location.ETHEREUM,
@@ -494,7 +495,7 @@ class EthDepositEvent(EvmEvent, EthStakingEvent):  # noqa: PLW1641  # hash in su
         return HistoryBaseEntryType.ETH_DEPOSIT_EVENT
 
     def __repr__(self) -> str:
-        return f'EthDepositEvent({self.validator_index=}, {self.timestamp=}, {self.tx_hash=})'
+        return f'EthDepositEvent({self.validator_index=}, {self.timestamp=}, {self.tx_ref=})'
 
     def __eq__(self, other: object) -> bool:
         return (
@@ -507,7 +508,7 @@ class EthDepositEvent(EvmEvent, EthStakingEvent):  # noqa: PLW1641  # hash in su
             tuple[str, str, CHAIN_EVENT_FIELDS_TYPE],
             tuple[str, str, tuple[int, int]],
     ]:
-        base_tuple, chain_tuple = self._serialize_evm_event_tuple_for_db()
+        base_tuple, chain_tuple = self._serialize_onchain_event_tuple_for_db()
         return (
             base_tuple,
             chain_tuple,
@@ -522,7 +523,7 @@ class EthDepositEvent(EvmEvent, EthStakingEvent):  # noqa: PLW1641  # hash in su
         entry = cast('EVM_DEPOSIT_EVENT_DB_TUPLE_READ', entry)
         amount = deserialize_fval(entry[5], 'amount', 'eth deposit event')
         return cls(
-            tx_hash=deserialize_evm_tx_hash(entry[7]),
+            tx_ref=deserialize_evm_tx_hash(entry[7]),
             validator_index=entry[8],
             sequence_index=entry[2],
             timestamp=TimestampMS(entry[3]),
@@ -537,7 +538,7 @@ class EthDepositEvent(EvmEvent, EthStakingEvent):  # noqa: PLW1641  # hash in su
         base_data = cls._deserialize_base_history_data(data)
 
         try:
-            tx_hash = deserialize_evm_tx_hash(data['tx_hash'])
+            tx_ref = deserialize_evm_tx_hash(data['tx_ref'])
             validator_index = data['validator_index']
         except KeyError as e:
             raise DeserializationError(f'Could not find key {e!s} for EthDepositEvent') from e
@@ -549,7 +550,7 @@ class EthDepositEvent(EvmEvent, EthStakingEvent):  # noqa: PLW1641  # hash in su
             raise DeserializationError('Did not provide location_label (depositor) address for Eth Deposit event')  # noqa: E501
 
         return cls(
-            tx_hash=tx_hash,
+            tx_ref=tx_ref,
             validator_index=validator_index,
             sequence_index=base_data['sequence_index'],
             timestamp=base_data['timestamp'],
